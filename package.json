@@ -1,0 +1,26 @@
+{
+  "name": "pi-extensions",
+  "version": "0.1.0",
+  "description": "Pi extensions and prompt templates by Cornelius Tantius.",
+  "keywords": ["pi-package", "pi", "extensions"],
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CorneliusTantius/pi-extensions"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/pi-ext-mgr.ts",
+      "./extensions/pi-subagents.ts",
+      "./extensions/pi-sys-prompt.ts",
+      "./extensions/pi-theme.ts"
+    ],
+    "prompts": ["./prompts/*.md"]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  }
+}
