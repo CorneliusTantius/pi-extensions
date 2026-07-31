@@ -10,7 +10,7 @@ The repository is one Pi package, but each extension can be enabled independentl
 pi install git:github.com/CorneliusTantius/pi-extensions
 ```
 
-Restart Pi or run `/reload` after installing.
+Restart Pi or run `/reload` after installing. Use `pi config` to enable or disable individual resources interactively.
 
 ## Install one extension
 
