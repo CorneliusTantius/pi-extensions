@@ -403,47 +403,32 @@ export default function subagentsExtension(pi: ExtensionAPI) {
         const agentChoice = await ctx.ui.select("Pick agent to set model for:", agentNames);
         if (!agentChoice) return;
 
-        // Fuzzy search first
+        // Show available models as a compact select with short labels
         const currentModel =
           agentChoice === "(default model)"
             ? config.defaultModel ?? ""
             : config.agents.find((a) => a.name === agentChoice)?.model ?? "";
-        const searchQuery = await ctx.ui.input(
-          `Search model (current: ${currentModel || "none"}):`,
-          "provider/model or part of name",
-        );
-        if (searchQuery === undefined) return; // cancelled
 
-        // Filter: fuzzy match against provider/id
-        const query = searchQuery.toLowerCase().trim() || "";
-        const filtered = query
-          ? allModels.filter((m) => {
-              const label = `${m.provider}/${m.id}`.toLowerCase();
-              return label.includes(query);
-            })
-          : allModels;
-
-        if (filtered.length === 0) {
-          ctx.ui.notify(`No models matching "${searchQuery}"`, "warning");
-          return;
-        }
-
-        const modelLabels = filtered.map((m) => `${m.provider}/${m.id}`);
+        const modelLabels = allModels.map((m) => m.id);
         const modelChoice = await ctx.ui.select(
-          `Pick model for ${agentChoice === "(default model)" ? "default" : agentChoice}: (${filtered.length} results)`,
+          `Model for ${agentChoice === "(default model)" ? "default" : agentChoice} (current: ${currentModel || "none"})`,
           modelLabels,
         );
         if (!modelChoice) return;
 
+        // Resolve back to full provider/id
+        const selected = allModels.find((m) => m.id === modelChoice);
+        const fullModel = selected ? `${selected.provider}/${selected.id}` : modelChoice;
+
         if (agentChoice === "(default model)") {
-          config.defaultModel = modelChoice;
+          config.defaultModel = fullModel;
         } else {
           const agent = config.agents.find((a) => a.name === agentChoice);
-          if (agent) agent.model = modelChoice;
+          if (agent) agent.model = fullModel;
         }
         writeConfig(config);
         ctx.ui.notify(
-          `${agentChoice === "(default model)" ? "Default" : agentChoice} model set to ${modelChoice}`,
+          `${agentChoice === "(default model)" ? "Default" : agentChoice} model set to ${fullModel}`,
           "info",
         );
         return;
