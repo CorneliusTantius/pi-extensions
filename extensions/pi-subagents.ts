@@ -362,7 +362,7 @@ export default function subagentsExtension(pi: ExtensionAPI) {
   pi.registerCommand("subagents", {
     description: "List or configure subagents.json",
     getArgumentCompletions(prefix) {
-      return ["list", "configure", "reset", "path"]
+      return ["list", "configure", "reset", "path", "model"]
         .filter((item) => item.startsWith(prefix))
         .map((value) => ({ value, label: value }));
     },
@@ -386,6 +386,43 @@ export default function subagentsExtension(pi: ExtensionAPI) {
         validateConfig(parsed);
         writeFileSync(CONFIG_PATH, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
         ctx.ui.notify("subagents.json saved", "info");
+        return;
+      }
+
+      if (action === "model") {
+        const config = ensureConfig();
+        const models = ctx.modelRegistry.getAvailable();
+        if (models.length === 0) {
+          ctx.ui.notify("No models available", "warning");
+          return;
+        }
+
+        // Pick agent or "default"
+        const agentNames = ["(default model)", ...config.agents.map((a) => a.name)];
+        const agentChoice = await ctx.ui.select("Pick agent to set model for:", agentNames);
+        if (!agentChoice) return;
+
+        // Fuzzy model picker — list provider/id grouped by provider
+        const modelLabels = models.map(
+          (m) => `${m.provider}/${m.id}`,
+        );
+        const modelChoice = await ctx.ui.select(
+          `Pick model for ${agentChoice === "(default model)" ? "default" : agentChoice}:`,
+          modelLabels,
+        );
+        if (!modelChoice) return;
+
+        if (agentChoice === "(default model)") {
+          config.defaultModel = modelChoice;
+        } else {
+          const agent = config.agents.find((a) => a.name === agentChoice);
+          if (agent) agent.model = modelChoice;
+        }
+        writeConfig(config);
+        ctx.ui.notify(
+          `${agentChoice === "(default model)" ? "Default" : agentChoice} model set to ${modelChoice}`,
+          "info",
+        );
         return;
       }
 
