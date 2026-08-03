@@ -391,8 +391,8 @@ export default function subagentsExtension(pi: ExtensionAPI) {
 
       if (action === "model") {
         const config = ensureConfig();
-        const models = ctx.modelRegistry.getAvailable();
-        if (models.length === 0) {
+        const allModels = ctx.modelRegistry.getAvailable();
+        if (allModels.length === 0) {
           ctx.ui.notify("No models available", "warning");
           return;
         }
@@ -402,12 +402,34 @@ export default function subagentsExtension(pi: ExtensionAPI) {
         const agentChoice = await ctx.ui.select("Pick agent to set model for:", agentNames);
         if (!agentChoice) return;
 
-        // Fuzzy model picker — list provider/id grouped by provider
-        const modelLabels = models.map(
-          (m) => `${m.provider}/${m.id}`,
+        // Fuzzy search first
+        const currentModel =
+          agentChoice === "(default model)"
+            ? config.defaultModel ?? ""
+            : config.agents.find((a) => a.name === agentChoice)?.model ?? "";
+        const searchQuery = await ctx.ui.input(
+          `Search model (current: ${currentModel || "none"}):`,
+          "provider/model or part of name",
         );
+        if (searchQuery === undefined) return; // cancelled
+
+        // Filter: fuzzy match against provider/id
+        const query = searchQuery.toLowerCase().trim() || "";
+        const filtered = query
+          ? allModels.filter((m) => {
+              const label = `${m.provider}/${m.id}`.toLowerCase();
+              return label.includes(query);
+            })
+          : allModels;
+
+        if (filtered.length === 0) {
+          ctx.ui.notify(`No models matching "${searchQuery}"`, "warning");
+          return;
+        }
+
+        const modelLabels = filtered.map((m) => `${m.provider}/${m.id}`);
         const modelChoice = await ctx.ui.select(
-          `Pick model for ${agentChoice === "(default model)" ? "default" : agentChoice}:`,
+          `Pick model for ${agentChoice === "(default model)" ? "default" : agentChoice}: (${filtered.length} results)`,
           modelLabels,
         );
         if (!modelChoice) return;
