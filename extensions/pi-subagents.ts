@@ -391,6 +391,7 @@ export default function subagentsExtension(pi: ExtensionAPI) {
 
       if (action === "model") {
         const config = ensureConfig();
+        await ctx.modelRegistry.refresh();
         const allModels = ctx.modelRegistry.getAvailable();
         if (allModels.length === 0) {
           ctx.ui.notify("No models available", "warning");
