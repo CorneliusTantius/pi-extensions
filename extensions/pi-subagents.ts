@@ -41,7 +41,7 @@ type RunResult = {
 };
 
 function defaultConfig(): SubagentConfig {
-  const defaultModel = "azure_ai/deepseek-v4-flash";
+  const defaultModel = "azure_ai/gpt-5.4-mini";
 
   const base = [
     "You are a small focused grunt-work subagent.",
@@ -52,7 +52,7 @@ function defaultConfig(): SubagentConfig {
 
   return {
     defaultModel,
-    defaultThinking: "off",
+    defaultThinking: "low",
     timeoutMs: DEFAULT_TIMEOUT_MS,
     agents: [
       {
