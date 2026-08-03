@@ -8,7 +8,7 @@ import { Type } from "typebox";
 
 const CONFIG_PATH = join(getAgentDir(), "subagents.json");
 const MAX_PARALLEL = 6;
-const MAX_CONCURRENCY = 3;
+const MAX_CONCURRENCY = 6;
 const OUTPUT_LIMIT = 30_000;
 const DEFAULT_TIMEOUT_MS = 120_000; // 2 minutes
 const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
@@ -41,7 +41,7 @@ type RunResult = {
 };
 
 function defaultConfig(): SubagentConfig {
-  const defaultModel = "azure_ai/gpt-5.4-mini";
+  const defaultModel = "azure_ai/deepseek-v4-flash";
 
   const base = [
     "You are a small focused grunt-work subagent.",
@@ -52,14 +52,14 @@ function defaultConfig(): SubagentConfig {
 
   return {
     defaultModel,
-    defaultThinking: "low",
+    defaultThinking: "off",
     timeoutMs: DEFAULT_TIMEOUT_MS,
     agents: [
       {
         name: "scout",
         description: "Read-only code scout for locating files, APIs, and likely change points.",
         model: defaultModel,
-        thinking: "low",
+        thinking: "off",
         tools: ["read", "grep", "find", "ls"],
         systemPrompt: `${base}\nYou scout the repo and report exact files, symbols, and next steps. Do not edit files.`,
       },
@@ -67,7 +67,7 @@ function defaultConfig(): SubagentConfig {
         name: "worker",
         description: "Small implementation worker for boring localized changes.",
         model: defaultModel,
-        thinking: "low",
+        thinking: "off",
         tools: ["read", "edit", "write", "bash", "grep", "find", "ls"],
         systemPrompt: `${base}\nYou implement small localized code changes. Keep edits minimal and obvious.`,
       },
@@ -75,7 +75,7 @@ function defaultConfig(): SubagentConfig {
         name: "tester",
         description: "Test runner/debugger for failures, logs, and small fixes.",
         model: defaultModel,
-        thinking: "low",
+        thinking: "off",
         tools: ["read", "bash", "grep", "find", "ls", "edit"],
         systemPrompt: `${base}\nYou run targeted tests, diagnose failures, and suggest or apply small fixes only when asked.`,
       },
@@ -83,7 +83,7 @@ function defaultConfig(): SubagentConfig {
         name: "reviewer",
         description: "Read-only reviewer for diffs, risks, and missed edge cases.",
         model: defaultModel,
-        thinking: "low",
+        thinking: "off",
         tools: ["read", "bash", "grep", "find", "ls"],
         systemPrompt: `${base}\nYou review work. Prioritize bugs, regressions, missing tests, and simple fixes. Do not edit files.`,
       },
