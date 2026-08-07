@@ -1,18 +1,19 @@
 {
-  "name": "pi-extensions",
+  "name": "pi-setup",
   "version": "0.1.0",
-  "description": "Pi extensions and prompt templates by Cornelius Tantius.",
-  "keywords": ["pi-package", "pi", "extensions"],
+  "description": "Pi setup — extensions, prompts, and defaults by Cornelius Tantius.",
+  "keywords": ["pi-package", "pi", "setup"],
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/CorneliusTantius/pi-extensions"
+    "url": "https://github.com/CorneliusTantius/pi-setup"
   },
   "pi": {
     "extensions": [
+      "./extensions/pi-retry.ts",
+      "./extensions/pi-swarm.ts",
       "./extensions/pi-ext-mgr.ts",
-      "./extensions/pi-subagents.ts",
       "./extensions/pi-sys-prompt.ts",
       "./extensions/pi-theme.ts"
     ],

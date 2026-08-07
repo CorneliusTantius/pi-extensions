@@ -1,21 +1,19 @@
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { homedir } from "node:os";
+import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
-const CONFIG_PATH = join(getAgentDir(), "subagents.json");
+const CONFIG_PATH = join(getAgentDir(), "swarm.json");
 const MAX_PARALLEL = 6;
-const MAX_CONCURRENCY = 6;
 const OUTPUT_LIMIT = 30_000;
-const DEFAULT_TIMEOUT_MS = 120_000; // 2 minutes
+const DEFAULT_TIMEOUT_MS = 120_000;
 const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
 
 type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 
-type SubagentConfig = {
+type SwarmConfig = {
   defaultModel?: string;
   defaultThinking?: ThinkingLevel;
   timeoutMs?: number;
@@ -40,11 +38,11 @@ type RunResult = {
   timedOut?: boolean;
 };
 
-function defaultConfig(): SubagentConfig {
+function defaultConfig(): SwarmConfig {
   const defaultModel = "azure_ai/gpt-5.4-mini";
 
   const base = [
-    "You are a small focused grunt-work subagent.",
+    "You are a small focused swarm agent.",
     "Use low/medium effort, stay concise, and do only the assigned task.",
     "Return findings, changed files, commands run, and any blockers.",
     "Do not start broad refactors or extra work.",
@@ -91,33 +89,33 @@ function defaultConfig(): SubagentConfig {
   };
 }
 
-function ensureConfig(): SubagentConfig {
+function ensureConfig(): SwarmConfig {
   if (!existsSync(CONFIG_PATH)) {
     writeConfig(defaultConfig());
   }
   return readConfig();
 }
 
-function readConfig(): SubagentConfig {
+function readConfig(): SwarmConfig {
   const raw = readFileSync(CONFIG_PATH, "utf8");
-  const config = JSON.parse(raw) as SubagentConfig;
+  const config = JSON.parse(raw) as SwarmConfig;
   validateConfig(config);
   return config;
 }
 
-function writeConfig(config: SubagentConfig) {
-  mkdirSync(dirname(CONFIG_PATH), { recursive: true });
+function writeConfig(config: SwarmConfig) {
+  mkdirSync(join(CONFIG_PATH, ".."), { recursive: true });
   writeFileSync(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, "utf8");
 }
 
-function validateConfig(config: SubagentConfig) {
-  if (!config || !Array.isArray(config.agents)) throw new Error("subagents.json must contain an agents array");
+function validateConfig(config: SwarmConfig) {
+  if (!config || !Array.isArray(config.agents)) throw new Error("swarm.json must contain an agents array");
   const names = new Set<string>();
   for (const agent of config.agents) {
     if (!agent.name || !agent.description || !agent.systemPrompt) {
-      throw new Error("Each subagent needs name, description, and systemPrompt");
+      throw new Error("Each agent needs name, description, and systemPrompt");
     }
-    if (names.has(agent.name)) throw new Error(`Duplicate subagent name: ${agent.name}`);
+    if (names.has(agent.name)) throw new Error(`Duplicate agent name: ${agent.name}`);
     names.add(agent.name);
     if (agent.thinking && !THINKING_LEVELS.includes(agent.thinking)) {
       throw new Error(`Invalid thinking level for ${agent.name}: ${agent.thinking}`);
@@ -154,8 +152,8 @@ function getPiInvocation(args: string[]) {
   return { command: process.execPath, args };
 }
 
-async function runSubagent(
-  config: SubagentConfig,
+async function runAgent(
+  config: SwarmConfig,
   agentName: string,
   task: string,
   cwd: string,
@@ -164,7 +162,7 @@ async function runSubagent(
   const agent = config.agents.find((item) => item.name === agentName);
   if (!agent) {
     const available = config.agents.map((item) => item.name).join(", ") || "none";
-    throw new Error(`Unknown subagent "${agentName}". Available: ${available}`);
+    throw new Error(`Unknown agent "${agentName}". Available: ${available}`);
   }
 
   const model = agent.model ?? config.defaultModel;
@@ -244,7 +242,7 @@ async function runSubagent(
           agent: agentName,
           task,
           exitCode: 124,
-          output: `Subagent timed out after ${formatTime(timeoutMs)}.`,
+          output: `Agent timed out after ${formatTime(timeoutMs)}.`,
           stderr: `Timeout: ${error.message}`,
           model: model || undefined,
           thinking,
@@ -301,24 +299,24 @@ function formatResults(results: RunResult[]) {
 }
 
 const TaskSchema = Type.Object({
-  agent: Type.String({ description: "Configured subagent name" }),
-  task: Type.String({ description: "Specific task for this subagent" }),
+  agent: Type.String({ description: "Configured swarm agent name" }),
+  task: Type.String({ description: "Specific task for this agent" }),
 });
 
-export default function subagentsExtension(pi: ExtensionAPI) {
+export default function swarmExtension(pi: ExtensionAPI) {
   ensureConfig();
 
   pi.registerTool({
-    name: "spawn_subagents",
-    label: "Spawn Subagents",
-    description: `Spawn configured low/medium-thinking grunt-work subagents from ${CONFIG_PATH}. Use one agent+task or parallel tasks.`,
-    promptSnippet: "Spawn configured subagents for isolated grunt work, scouting, testing, or review.",
+    name: "spawn_swarm",
+    label: "Spawn Swarm",
+    description: `Spawn configured low/medium-thinking swarm agents from ${CONFIG_PATH}. Use one agent+task or parallel tasks.`,
+    promptSnippet: "Spawn configured swarm agents for isolated grunt work, scouting, testing, or review.",
     promptGuidelines: [
-      "Use spawn_subagents to delegate independent grunt-work tasks to small configured subagents.",
-      "Keep spawn_subagents tasks specific and bounded; do not delegate broad planning or vague work.",
+      "Use spawn_swarm to delegate independent grunt-work tasks to small configured agents.",
+      "Keep spawn_swarm tasks specific and bounded; do not delegate broad planning or vague work.",
     ],
     parameters: Type.Object({
-      agent: Type.Optional(Type.String({ description: "Subagent name for single mode" })),
+      agent: Type.Optional(Type.String({ description: "Swarm agent name for single mode" })),
       task: Type.Optional(Type.String({ description: "Task for single mode" })),
       tasks: Type.Optional(Type.Array(TaskSchema, { description: "Parallel tasks. Max 6." })),
     }),
@@ -335,113 +333,21 @@ export default function subagentsExtension(pi: ExtensionAPI) {
 
       if (single) {
         onUpdate?.({ content: [{ type: "text", text: `Running ${params.agent}...` }] });
-        const result = await runSubagent(
-          config,
-          params.agent!,
-          params.task!,
-          ctx.cwd,
-          signal,
-        );
+        const result = await runAgent(config, params.agent!, params.task!, ctx.cwd, signal);
         return {
           content: [{ type: "text", text: formatResults([result]) }],
           details: { results: [result] },
         };
       }
 
-      onUpdate?.({ content: [{ type: "text", text: `Running ${batch!.length} subagents...` }] });
-      const results = await runParallel(batch!, MAX_CONCURRENCY, (item) =>
-        runSubagent(config, item.agent, item.task, ctx.cwd, signal),
+      onUpdate?.({ content: [{ type: "text", text: `Running ${batch!.length} agents...` }] });
+      const results = await runParallel(batch!, MAX_PARALLEL, (item) =>
+        runAgent(config, item.agent, item.task, ctx.cwd, signal),
       );
       return {
         content: [{ type: "text", text: formatResults(results) }],
         details: { results },
       };
-    },
-  });
-
-  pi.registerCommand("subagents", {
-    description: "List or configure subagents.json",
-    getArgumentCompletions(prefix) {
-      return ["list", "configure", "reset", "path", "model"]
-        .filter((item) => item.startsWith(prefix))
-        .map((value) => ({ value, label: value }));
-    },
-    handler: async (args, ctx) => {
-      const action = args.trim() || "list";
-      if (action === "path") {
-        ctx.ui.notify(CONFIG_PATH.replace(homedir(), "~"), "info");
-        return;
-      }
-      if (action === "reset") {
-        if (ctx.hasUI && !(await ctx.ui.confirm("Reset subagents.json?", CONFIG_PATH))) return;
-        writeConfig(defaultConfig());
-        ctx.ui.notify("subagents.json reset", "info");
-        return;
-      }
-      if (action === "configure" || action === "edit") {
-        const current = JSON.stringify(ensureConfig(), null, 2);
-        const edited = await ctx.ui.editor("Edit subagents.json", current);
-        if (edited === undefined || edited === current) return;
-        const parsed = JSON.parse(edited) as SubagentConfig;
-        validateConfig(parsed);
-        writeFileSync(CONFIG_PATH, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
-        ctx.ui.notify("subagents.json saved", "info");
-        return;
-      }
-
-      if (action === "model") {
-        const config = ensureConfig();
-        await ctx.modelRegistry.refresh();
-        const allModels = ctx.modelRegistry.getAvailable();
-        if (allModels.length === 0) {
-          ctx.ui.notify("No models available", "warning");
-          return;
-        }
-
-        // Pick agent or "default"
-        const agentNames = ["(default model)", ...config.agents.map((a) => a.name)];
-        const agentChoice = await ctx.ui.select("Pick agent to set model for:", agentNames);
-        if (!agentChoice) return;
-
-        // Show available models as a compact select with short labels
-        const currentModel =
-          agentChoice === "(default model)"
-            ? config.defaultModel ?? ""
-            : config.agents.find((a) => a.name === agentChoice)?.model ?? "";
-
-        const modelLabels = allModels.map((m) => m.id);
-        const modelChoice = await ctx.ui.select(
-          `Model for ${agentChoice === "(default model)" ? "default" : agentChoice} (current: ${currentModel || "none"})`,
-          modelLabels,
-        );
-        if (!modelChoice) return;
-
-        // Resolve back to full provider/id
-        const selected = allModels.find((m) => m.id === modelChoice);
-        const fullModel = selected ? `${selected.provider}/${selected.id}` : modelChoice;
-
-        if (agentChoice === "(default model)") {
-          config.defaultModel = fullModel;
-        } else {
-          const agent = config.agents.find((a) => a.name === agentChoice);
-          if (agent) agent.model = fullModel;
-        }
-        writeConfig(config);
-        ctx.ui.notify(
-          `${agentChoice === "(default model)" ? "Default" : agentChoice} model set to ${fullModel}`,
-          "info",
-        );
-        return;
-      }
-
-      const config = ensureConfig();
-      const lines = config.agents.map((agent) => {
-        const model = agent.model ?? config.defaultModel ?? "pi default";
-        const thinking = agent.thinking ?? config.defaultThinking ?? "low";
-        const timeout = config.timeoutMs ? `timeout:${formatTime(config.timeoutMs)}` : "";
-        return `${agent.name}: ${agent.description} [${model}, thinking:${thinking}${timeout ? `, ${timeout}` : ""}]`;
-      });
-      ctx.ui.notify(`Subagents (${CONFIG_PATH}):\n${lines.join("\n")}`, "info");
     },
   });
 }
