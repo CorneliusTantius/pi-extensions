@@ -47,7 +47,7 @@ interface Pi {
   on(event: string, handler: (event: PiEvent) => PiEvent): void;
 }
 
-const SYSTEM_PROMPT = [BASE_SYSTEM_PROMPT, YAGNI, KISS, DRY].join("\n\n");
+const SYSTEM_PROMPT = [BASE_SYSTEM_PROMPT, YAGNI, KISS, DRY].join("\n");
 
 export default function yagniKissDry(pi: Pi) {
   pi.on("before_agent_start", () => ({ systemPrompt: SYSTEM_PROMPT }));
